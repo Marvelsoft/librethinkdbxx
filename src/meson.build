@@ -1,6 +1,5 @@
 project_srcs = files([
  'connection.cc',
- 'cursor.cc',
  'datum.cc',
  'json.cc',
  'term.cc',

@@ -3,9 +3,11 @@
 #include "datum.h"
 #include "connection.h"
 #include "protocol_defs.h"
-#include "cursor.h"
+//#include "cursor.h"
 
-namespace RethinkDB {
+namespace RethinkDB
+{
+class Connection;
 
 using TT = Protocol::Term::TermType;
 
@@ -14,7 +16,7 @@ class Var;
 
 // An alias for the Term constructor
 template <class T>
-Term expr(T&&);
+Term expr(T &&);
 
 int gen_var_id();
 
@@ -23,16 +25,17 @@ using OptArgs = std::map<std::string, Term>;
 
 // Represents a ReQL Term (RethinkDB Query Language)
 // Designed to be used with r-value *this
-class Term {
-public:
-    Term(const Term& other) = default;
-    Term(Term&& other) = default;
-    Term& operator= (const Term& other) = default;
-    Term& operator= (Term&& other) = default;
+class Term
+{
+  public:
+    Term(const Term &other) = default;
+    Term(Term &&other) = default;
+    Term &operator=(const Term &other) = default;
+    Term &operator=(Term &&other) = default;
 
-    explicit Term(Datum&&);
-    explicit Term(const Datum&);
-    explicit Term(OptArgs&&);
+    explicit Term(Datum &&);
+    explicit Term(const Datum &);
+    explicit Term(OptArgs &&);
 
     // Create a copy of the Term
     Term copy() const;
@@ -41,30 +44,34 @@ public:
     Term(std::function<Term(Var)> f) : datum(Nil()) { set_function<std::function<Term(Var)>, 0>(f); }
     Term(std::function<Term(Var, Var)> f) : datum(Nil()) { set_function<std::function<Term(Var, Var)>, 0, 1>(f); }
     Term(std::function<Term(Var, Var, Var)> f) : datum(Nil()) { set_function<std::function<Term(Var, Var, Var)>, 0, 1, 2>(f); }
-    Term(Protocol::Term::TermType type, std::vector<Term>&& args) : datum(Array()) {
+    Term(Protocol::Term::TermType type, std::vector<Term> &&args) : datum(Array())
+    {
         Array dargs;
-        for (auto& it : args) {
+        for (auto &it : args)
+        {
             dargs.emplace_back(alpha_rename(std::move(it)));
         }
-        datum = Datum(Array{ type, std::move(dargs) });
+        datum = Datum(Array{type, std::move(dargs)});
     }
 
-    Term(Protocol::Term::TermType type, std::vector<Term>&& args, OptArgs&& optargs) : datum(Array()) {
+    Term(Protocol::Term::TermType type, std::vector<Term> &&args, OptArgs &&optargs) : datum(Array())
+    {
         Array dargs;
-        for (auto& it : args) {
+        for (auto &it : args)
+        {
             dargs.emplace_back(alpha_rename(std::move(it)));
         }
         Object oargs;
-        for (auto& it : optargs) {
+        for (auto &it : optargs)
+        {
             oargs.emplace(it.first, alpha_rename(std::move(it.second)));
         }
-        datum = Array{ type, std::move(dargs), std::move(oargs) };
+        datum = Array{type, std::move(dargs), std::move(oargs)};
     }
 
     // Used internally to support row
-    static Term func_wrap(Term&&);
-    static Term func_wrap(const Term&);
-
+    static Term func_wrap(Term &&);
+    static Term func_wrap(const Term &);
 
     // These macros are used to define most ReQL commands
     //  * Cn represents a method with n arguments
@@ -73,71 +80,99 @@ public:
     // Each method is implemented twice, once with r-value *this, and once with const *this
     // The third argument, wrap, allows converting arguments into functions if they contain row
 
-#define C0(name, type) \
-    Term name() &&      { return Term(TT::type, std::vector<Term>{ std::move(*this) }); } \
-    Term name() const & { return Term(TT::type, std::vector<Term>{ *this            }); }
-#define C1(name, type, wrap)                                            \
-    template <class T>                                                  \
-    Term name(T&& a) && { return Term(TT::type, std::vector<Term>{ std::move(*this), wrap(expr(std::forward<T>(a))) }); } \
-    template <class T>                                                  \
-    Term name(T&& a) const & { return Term(TT::type, std::vector<Term>{ *this, wrap(expr(std::forward<T>(a))) }); }
-#define C2(name, type)                                                  \
-    template <class T, class U> Term name(T&& a, U&& b) && {           \
-        return Term(TT::type, std::vector<Term>{ std::move(*this),    \
-                    expr(std::forward<T>(a)), expr(std::forward<U>(b)) }); } \
-    template <class T, class U> Term name(T&& a, U&& b) const & {      \
-        return Term(TT::type, std::vector<Term>{ *this,        \
-                    expr(std::forward<T>(a)), expr(std::forward<U>(b)) }); }
-#define C_(name, type, wrap)                                            \
-    template <class ...T> Term name(T&& ...a) && {                     \
-        return Term(TT::type, std::vector<Term>{ std::move(*this),    \
-                    wrap(expr(std::forward<T>(a)))... }); }             \
-    template <class ...T> Term name(T&& ...a) const & {                \
-        return Term(TT::type, std::vector<Term>{ *this,        \
-                    wrap(expr(std::forward<T>(a)))... }); }
-#define CO0(name, type)                                                 \
-    Term name(OptArgs&& optarg = {}) && {                              \
-        return Term(TT::type, std::vector<Term>{ std::move(*this) }, std::move(optarg)); } \
-    Term name(OptArgs&& optarg = {}) const & {                         \
-        return Term(TT::type, std::vector<Term>{ *this }, std::move(optarg)); }
-#define CO1(name, type, wrap)                                                \
-    template <class T> Term name(T&& a, OptArgs&& optarg = {}) && {    \
-        return Term(TT::type, std::vector<Term>{ std::move(*this),    \
-                    wrap(expr(std::forward<T>(a))) }, std::move(optarg)); } \
-    template <class T> Term name(T&& a, OptArgs&& optarg = {}) const & { \
-        return Term(TT::type, std::vector<Term>{ *this,               \
-                    wrap(expr(std::forward<T>(a))) }, std::move(optarg)); }
-#define CO2(name, type, wrap)                                           \
-    template <class T, class U> Term name(T&& a, U&& b, OptArgs&& optarg = {}) && { \
-        return Term(TT::type, std::vector<Term>{ std::move(*this),    \
-                    wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))) }, std::move(optarg)); } \
-    template <class T, class U> Term name(T&& a, U&& b, OptArgs&& optarg = {}) const & { \
-        return Term(TT::type, std::vector<Term>{ *this,        \
-                    wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))) }, std::move(optarg)); }
-#define CO3(name, type, wrap)                                                \
-    template <class T, class U, class V> Term name(T&& a, U&& b, V&& c, OptArgs&& optarg = {}) && { \
-        return Term(TT::type, std::vector<Term>{ std::move(*this),    \
-                    wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))), \
-                    wrap(expr(std::forward<V>(c))) }, std::move(optarg)); } \
-    template <class T, class U, class V> Term name(T&& a, U&& b, V&& c, OptArgs&& optarg = {}) const & { \
-        return Term(TT::type, std::vector<Term>{ *this,        \
-                    wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))), \
-                    wrap(expr(std::forward<V>(c)))}, std::move(optarg)); }
-#define CO4(name, type, wrap)                                                \
-    template <class T, class U, class V, class W> Term name(T&& a, U&& b, V&& c, W&& d, OptArgs&& optarg = {}) && { \
-        return Term(TT::type, std::vector<Term>{ std::move(*this),    \
-        wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))), \
-        wrap(expr(std::forward<V>(c))), wrap(expr(std::forward<W>(d))) }, std::move(optarg)); } \
-    template <class T, class U, class V, class W> Term name(T&& a, U&& b, V&& c, W&& d, OptArgs&& optarg = {}) const & { \
-        return Term(TT::type, std::vector<Term>{ *this,        \
-        wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))), \
-        wrap(expr(std::forward<V>(c))), wrap(expr(std::forward<W>(d))) }, std::move(optarg)); }
-#define CO_(name, type, wrap)                                       \
-    C_(name, type, wrap)                                            \
-    CO0(name, type)                                                 \
-    CO1(name, type, wrap)                                           \
-    CO2(name, type, wrap)                                           \
-    CO3(name, type, wrap)                                           \
+#define C0(name, type)                                                             \
+    Term name() && { return Term(TT::type, std::vector<Term>{std::move(*this)}); } \
+    Term name() const & { return Term(TT::type, std::vector<Term>{*this}); }
+#define C1(name, type, wrap)                                                                                            \
+    template <class T>                                                                                                  \
+    Term name(T &&a) && { return Term(TT::type, std::vector<Term>{std::move(*this), wrap(expr(std::forward<T>(a)))}); } \
+    template <class T>                                                                                                  \
+    Term name(T &&a) const & { return Term(TT::type, std::vector<Term>{*this, wrap(expr(std::forward<T>(a)))}); }
+#define C2(name, type)                                                                                \
+    template <class T, class U>                                                                       \
+    Term name(T &&a, U &&b) &&                                                                        \
+    {                                                                                                 \
+        return Term(TT::type, std::vector<Term>{std::move(*this),                                     \
+                                                expr(std::forward<T>(a)), expr(std::forward<U>(b))}); \
+    }                                                                                                 \
+    template <class T, class U>                                                                       \
+    Term name(T &&a, U &&b) const &                                                                   \
+    {                                                                                                 \
+        return Term(TT::type, std::vector<Term>{*this,                                                \
+                                                expr(std::forward<T>(a)), expr(std::forward<U>(b))}); \
+    }
+#define C_(name, type, wrap)                                                         \
+    template <class... T>                                                            \
+    Term name(T &&... a) &&                                                          \
+    {                                                                                \
+        return Term(TT::type, std::vector<Term>{std::move(*this),                    \
+                                                wrap(expr(std::forward<T>(a)))...}); \
+    }                                                                                \
+    template <class... T>                                                            \
+    Term name(T &&... a) const &                                                     \
+    {                                                                                \
+        return Term(TT::type, std::vector<Term>{*this,                               \
+                                                wrap(expr(std::forward<T>(a)))...}); \
+    }
+#define CO0(name, type)                                                                \
+    Term name(OptArgs &&optarg = {}) &&                                                \
+    {                                                                                  \
+        return Term(TT::type, std::vector<Term>{std::move(*this)}, std::move(optarg)); \
+    }                                                                                  \
+    Term name(OptArgs &&optarg = {}) const &                                           \
+    {                                                                                  \
+        return Term(TT::type, std::vector<Term>{*this}, std::move(optarg));            \
+    }
+#define CO1(name, type, wrap)                                                                                          \
+    template <class T>                                                                                                 \
+    Term name(T &&a, OptArgs &&optarg = {}) &&                                                                         \
+    {                                                                                                                  \
+        return Term(TT::type, std::vector<Term>{std::move(*this), wrap(expr(std::forward<T>(a)))}, std::move(optarg)); \
+    }                                                                                                                  \
+    template <class T>                                                                                                 \
+    Term name(T &&a, OptArgs &&optarg = {}) const &                                                                    \
+    {                                                                                                                  \
+        return Term(TT::type, std::vector<Term>{*this, wrap(expr(std::forward<T>(a)))}, std::move(optarg));            \
+    }
+#define CO2(name, type, wrap)                                                                                                                          \
+    template <class T, class U>                                                                                                                        \
+    Term name(T &&a, U &&b, OptArgs &&optarg = {}) &&                                                                                                  \
+    {                                                                                                                                                  \
+        return Term(TT::type, std::vector<Term>{std::move(*this), wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b)))}, std::move(optarg)); \
+    }                                                                                                                                                  \
+    template <class T, class U>                                                                                                                        \
+    Term name(T &&a, U &&b, OptArgs &&optarg = {}) const &                                                                                             \
+    {                                                                                                                                                  \
+        return Term(TT::type, std::vector<Term>{*this, wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b)))}, std::move(optarg));            \
+    }
+#define CO3(name, type, wrap)                                                                                                                                                          \
+    template <class T, class U, class V>                                                                                                                                               \
+    Term name(T &&a, U &&b, V &&c, OptArgs &&optarg = {}) &&                                                                                                                           \
+    {                                                                                                                                                                                  \
+        return Term(TT::type, std::vector<Term>{std::move(*this), wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))), wrap(expr(std::forward<V>(c)))}, std::move(optarg)); \
+    }                                                                                                                                                                                  \
+    template <class T, class U, class V>                                                                                                                                               \
+    Term name(T &&a, U &&b, V &&c, OptArgs &&optarg = {}) const &                                                                                                                      \
+    {                                                                                                                                                                                  \
+        return Term(TT::type, std::vector<Term>{*this, wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))), wrap(expr(std::forward<V>(c)))}, std::move(optarg));            \
+    }
+#define CO4(name, type, wrap)                                                                                                                                                                                          \
+    template <class T, class U, class V, class W>                                                                                                                                                                      \
+    Term name(T &&a, U &&b, V &&c, W &&d, OptArgs &&optarg = {}) &&                                                                                                                                                    \
+    {                                                                                                                                                                                                                  \
+        return Term(TT::type, std::vector<Term>{std::move(*this), wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))), wrap(expr(std::forward<V>(c))), wrap(expr(std::forward<W>(d)))}, std::move(optarg)); \
+    }                                                                                                                                                                                                                  \
+    template <class T, class U, class V, class W>                                                                                                                                                                      \
+    Term name(T &&a, U &&b, V &&c, W &&d, OptArgs &&optarg = {}) const &                                                                                                                                               \
+    {                                                                                                                                                                                                                  \
+        return Term(TT::type, std::vector<Term>{*this, wrap(expr(std::forward<T>(a))), wrap(expr(std::forward<U>(b))), wrap(expr(std::forward<V>(c))), wrap(expr(std::forward<W>(d)))}, std::move(optarg));            \
+    }
+#define CO_(name, type, wrap) \
+    C_(name, type, wrap)      \
+    CO0(name, type)           \
+    CO1(name, type, wrap)     \
+    CO2(name, type, wrap)     \
+    CO3(name, type, wrap)     \
     CO4(name, type, wrap)
 #define no_wrap(x) x
 
@@ -295,21 +330,23 @@ public:
 
     // $doc(do)
 
-    template <class T, class ...U>
+    template <class T, class... U>
     typename std::enable_if<!std::is_same<T, Var>::value, Term>::type
-    operator() (T&& a, U&& ...b) && {
+    operator()(T &&a, U &&... b) &&
+    {
         return Term(TT::FUNCALL, std::vector<Term>{
-                std::move(*this),
-                expr(std::forward<T>(a)),
-                expr(std::forward<U>(b))... });
+                                     std::move(*this),
+                                     expr(std::forward<T>(a)),
+                                     expr(std::forward<U>(b))...});
     }
-    template <class T, class ...U>
+    template <class T, class... U>
     typename std::enable_if<!std::is_same<T, Var>::value, Term>::type
-    operator() (T&& a, U&& ...b) const & {
+    operator()(T &&a, U &&... b) const &
+    {
         return Term(TT::FUNCALL, std::vector<Term>{
-                *this,
-                expr(std::forward<T>(a)),
-                expr(std::forward<U>(b))... });
+                                     *this,
+                                     expr(std::forward<T>(a)),
+                                     expr(std::forward<U>(b))...});
     }
 
 #undef C0
@@ -322,50 +359,54 @@ public:
 
     // Send the term to the server and return the results.
     // Errors returned by the server are thrown.
-    Cursor run(Connection&, OptArgs&& args = {});
-
+    //Cursor run(Connection&, OptArgs&& args = {});
+    //My implementation
+    std::string run(uint64_t token, OptArgs &&args = {});
     // $doc(do)
-    template <class ...T>
-    Term do_(T&& ...a) && {
-        auto list = { std::move(*this), Term::func_wrap(expr(std::forward<T>(a)))... };
+    template <class... T>
+    Term do_(T &&... a) &&
+    {
+        auto list = {std::move(*this), Term::func_wrap(expr(std::forward<T>(a)))...};
         std::vector<Term> args;
         args.reserve(list.size() + 1);
-        args.emplace_back(func_wrap(std::move(*(list.end()-1))));
-        for (auto it = list.begin(); it + 1 != list.end(); ++it) {
+        args.emplace_back(func_wrap(std::move(*(list.end() - 1))));
+        for (auto it = list.begin(); it + 1 != list.end(); ++it)
+        {
             args.emplace_back(std::move(*it));
         }
         return Term(TT::FUNCALL, std::move(args));
     }
 
     // Adds optargs to an already built term
-    Term opt(OptArgs&& optargs) && {
+    Term opt(OptArgs &&optargs) &&
+    {
         return Term(std::move(*this), std::move(optargs));
     }
 
     // Used internally to implement object()
-    static Term make_object(std::vector<Term>&&);
+    static Term make_object(std::vector<Term> &&);
 
     // Used internally to implement array()
-    static Term make_binary(Term&&);
+    static Term make_binary(Term &&);
 
     Datum get_datum() const;
 
-private:
+  private:
     friend class Var;
     friend class Connection;
     friend struct Query;
 
     template <int _>
-    Var mkvar(std::vector<int>& vars);
+    Var mkvar(std::vector<int> &vars);
 
-    template <class F, int ...N>
+    template <class F, int... N>
     void set_function(F);
 
-    Datum alpha_rename(Term&&);
+    Datum alpha_rename(Term &&);
 
-    Term(Term&& orig, OptArgs&& optargs);
+    Term(Term &&orig, OptArgs &&optargs);
 
-    std::map<int, int*> free_vars;
+    std::map<int, int *> free_vars;
     Datum datum;
 };
 
@@ -373,49 +414,60 @@ private:
 Term nil();
 
 template <class T>
-Term expr(T&& a) {
+Term expr(T &&a)
+{
     return Term(std::forward<T>(a));
 }
 
 // Represents a ReQL variable.
 // This type is passed to functions used in ReQL queries.
-class Var {
-public:
+class Var
+{
+  public:
     // Convert to a term
-    Term operator*() const {
+    Term operator*() const
+    {
         Term term(TT::VAR, std::vector<Term>{expr(*id)});
         term.free_vars = {{*id, id}};
         return term;
     }
 
-    Var(int* id_) : id(id_) { }
-private:
-    int* id;
+    Var(int *id_) : id(id_) {}
+
+  private:
+    int *id;
 };
 
 template <int N>
-Var Term::mkvar(std::vector<int>& vars) {
+Var Term::mkvar(std::vector<int> &vars)
+{
     int id = gen_var_id();
     vars.push_back(id);
     return Var(&*vars.rbegin());
 }
 
-template <class F, int ...N>
-void Term::set_function(F f) {
+template <class F, int... N>
+void Term::set_function(F f)
+{
     std::vector<int> vars;
     vars.reserve(sizeof...(N));
-    std::vector<Var> args = { mkvar<N>(vars)... };
-    Term body = f(args[N] ...);
+    std::vector<Var> args = {mkvar<N>(vars)...};
+    Term body = f(args[N]...);
 
-    int* low = &*vars.begin();
-    int* high = &*(vars.end() - 1);
-    for (auto it = body.free_vars.begin(); it != body.free_vars.end(); ) {
-        if (it->second >= low && it->second <= high) {
-            if (it->first != *it->second) {
+    int *low = &*vars.begin();
+    int *high = &*(vars.end() - 1);
+    for (auto it = body.free_vars.begin(); it != body.free_vars.end();)
+    {
+        if (it->second >= low && it->second <= high)
+        {
+            if (it->first != *it->second)
+            {
                 throw Error("Internal error: variable index mis-match");
             }
             ++it;
-        } else {
+        }
+        else
+        {
             free_vars.emplace(*it);
             ++it;
         }
@@ -426,31 +478,56 @@ void Term::set_function(F f) {
 // These macros are similar to those defined above, but for top-level ReQL operations
 
 #define C0(name) Term name();
-#define C0_IMPL(name, type) Term name() { return Term(TT::type, std::vector<Term>{}); }
-#define CO0(name) Term name(OptArgs&& optargs = {});
-#define CO0_IMPL(name, type) Term name(OptArgs&& optargs) { return Term(TT::type, std::vector<Term>{}, std::move(optargs)); }
-#define C1(name, type, wrap) template <class T> Term name(T&& a) {          \
-        return Term(TT::type, std::vector<Term>{ wrap(expr(std::forward<T>(a))) }); }
-#define C2(name, type) template <class T, class U> Term name(T&& a, U&& b) { \
-        return Term(TT::type, std::vector<Term>{ expr(std::forward<T>(a)), expr(std::forward<U>(b)) }); }
-#define C3(name, type) template <class A, class B, class C>    \
-    Term name(A&& a, B&& b, C&& c) { return Term(TT::type, std::vector<Term>{ \
-                expr(std::forward<A>(a)), expr(std::forward<B>(b)), expr(std::forward<C>(c)) }); }
-#define C4(name, type) template <class A, class B, class C, class D>    \
-    Term name(A&& a, B&& b, C&& c, D&& d) { return Term(TT::type, std::vector<Term>{ \
-                expr(std::forward<A>(a)), expr(std::forward<B>(b)),     \
-                    expr(std::forward<C>(c)), expr(std::forward<D>(d))}); }
-#define C7(name, type) template <class A, class B, class C, class D, class E, class F, class G> \
-    Term name(A&& a, B&& b, C&& c, D&& d, E&& e, F&& f, G&& g) { return Term(TT::type, std::vector<Term>{ \
-        expr(std::forward<A>(a)), expr(std::forward<B>(b)), expr(std::forward<C>(c)), \
-        expr(std::forward<D>(d)), expr(std::forward<E>(e)), expr(std::forward<F>(f)), \
-            expr(std::forward<G>(g))}); }
-#define C_(name, type, wrap) template <class ...T> Term name(T&& ...a) {    \
-        return Term(TT::type, std::vector<Term>{ wrap(expr(std::forward<T>(a)))... }); }
-#define CO1(name, type, wrap) template <class T> Term name(T&& a, OptArgs&& optarg = {}) {       \
-        return Term(TT::type, std::vector<Term>{ wrap(expr(std::forward<T>(a)))}, std::move(optarg)); }
-#define CO2(name, type) template <class T, class U> Term name(T&& a, U&& b, OptArgs&& optarg = {}) { \
-        return Term(TT::type, std::vector<Term>{ expr(std::forward<T>(a)), expr(std::forward<U>(b))}, std::move(optarg)); }
+#define C0_IMPL(name, type) \
+    Term name() { return Term(TT::type, std::vector<Term>{}); }
+#define CO0(name) Term name(OptArgs &&optargs = {});
+#define CO0_IMPL(name, type) \
+    Term name(OptArgs &&optargs) { return Term(TT::type, std::vector<Term>{}, std::move(optargs)); }
+#define C1(name, type, wrap)                                                      \
+    template <class T>                                                            \
+    Term name(T &&a)                                                              \
+    {                                                                             \
+        return Term(TT::type, std::vector<Term>{wrap(expr(std::forward<T>(a)))}); \
+    }
+#define C2(name, type)                                                                                \
+    template <class T, class U>                                                                       \
+    Term name(T &&a, U &&b)                                                                           \
+    {                                                                                                 \
+        return Term(TT::type, std::vector<Term>{expr(std::forward<T>(a)), expr(std::forward<U>(b))}); \
+    }
+#define C3(name, type)                                                        \
+    template <class A, class B, class C>                                      \
+    Term name(A &&a, B &&b, C &&c) { return Term(TT::type, std::vector<Term>{ \
+                                                               expr(std::forward<A>(a)), expr(std::forward<B>(b)), expr(std::forward<C>(c))}); }
+#define C4(name, type)                                                                                                    \
+    template <class A, class B, class C, class D>                                                                         \
+    Term name(A &&a, B &&b, C &&c, D &&d) { return Term(TT::type, std::vector<Term>{                                      \
+                                                                      expr(std::forward<A>(a)), expr(std::forward<B>(b)), \
+                                                                      expr(std::forward<C>(c)), expr(std::forward<D>(d))}); }
+#define C7(name, type)                                                                                                                                                   \
+    template <class A, class B, class C, class D, class E, class F, class G>                                                                                             \
+    Term name(A &&a, B &&b, C &&c, D &&d, E &&e, F &&f, G &&g) { return Term(TT::type, std::vector<Term>{                                                                \
+                                                                                           expr(std::forward<A>(a)), expr(std::forward<B>(b)), expr(std::forward<C>(c)), \
+                                                                                           expr(std::forward<D>(d)), expr(std::forward<E>(e)), expr(std::forward<F>(f)), \
+                                                                                           expr(std::forward<G>(g))}); }
+#define C_(name, type, wrap)                                                         \
+    template <class... T>                                                            \
+    Term name(T &&... a)                                                             \
+    {                                                                                \
+        return Term(TT::type, std::vector<Term>{wrap(expr(std::forward<T>(a)))...}); \
+    }
+#define CO1(name, type, wrap)                                                                        \
+    template <class T>                                                                               \
+    Term name(T &&a, OptArgs &&optarg = {})                                                          \
+    {                                                                                                \
+        return Term(TT::type, std::vector<Term>{wrap(expr(std::forward<T>(a)))}, std::move(optarg)); \
+    }
+#define CO2(name, type)                                                                                                  \
+    template <class T, class U>                                                                                          \
+    Term name(T &&a, U &&b, OptArgs &&optarg = {})                                                                       \
+    {                                                                                                                    \
+        return Term(TT::type, std::vector<Term>{expr(std::forward<T>(a)), expr(std::forward<U>(b))}, std::move(optarg)); \
+    }
 #define func_wrap Term::func_wrap
 
 C1(db_create, DB_CREATE, no_wrap)
@@ -538,20 +615,23 @@ C_(contains, CONTAINS, func_wrap)
 #undef func_wrap
 
 // $doc(do)
-template <class R, class ...T>
-Term do_(R&& a, T&& ...b) {
+template <class R, class... T>
+Term do_(R &&a, T &&... b)
+{
     return expr(std::forward<R>(a)).do_(std::forward<T>(b)...);
 }
 
 // $doc(object)
-template <class ...T>
-Term object(T&& ...a) {
-    return Term::make_object(std::vector<Term>{ expr(std::forward<T>(a))... });
+template <class... T>
+Term object(T &&... a)
+{
+    return Term::make_object(std::vector<Term>{expr(std::forward<T>(a))...});
 }
 
 // $doc(binary)
 template <class T>
-Term binary(T&& a) {
+Term binary(T &&a)
+{
     return Term::make_binary(expr(std::forward<T>(a)));
 }
 
@@ -560,8 +640,9 @@ OptArgs optargs();
 
 // Construct an optarg made out of pairs of arguments
 // For example: optargs("k1", v1, "k2", v2)
-template <class V, class ...T>
-OptArgs optargs(const char* key, V&& val, T&& ...rest) {
+template <class V, class... T>
+OptArgs optargs(const char *key, V &&val, T &&... rest)
+{
     OptArgs opts = optargs(rest...);
     opts.emplace(key, expr(std::forward<V>(val)));
     return opts;
@@ -589,4 +670,4 @@ extern Term thursday;
 extern Term friday;
 extern Term saturday;
 extern Term sunday;
-}
+} // namespace RethinkDB

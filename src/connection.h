@@ -14,46 +14,52 @@
 #define SECOND 1
 #define MICROSECOND 0.000001
 
-namespace RethinkDB {
-
+namespace RethinkDB
+{
 class Term;
 using OptArgs = std::map<std::string, Term>;
-
+struct Query;
 // A connection to a RethinkDB server
 // It contains:
 //  * A socket
 //  * Read and write locks
 //  * A cache of responses that have not been read by the corresponding Cursor
-class ConnectionPrivate;
-class Connection {
+//class ConnectionPrivate;
+class Connection
+{
 public:
-    Connection() = delete;
-    Connection(const Connection&) noexcept = delete;
-    Connection(Connection&&) noexcept = delete;
-    Connection& operator=(Connection&&) noexcept = delete;
-    Connection& operator=(const Connection&) noexcept = delete;
-    ~Connection();
+  Connection();
+  Connection(const Connection &) noexcept = delete;
+  Connection(Connection &&) noexcept = delete;
+  Connection &operator=(Connection &&) noexcept = delete;
+  Connection &operator=(const Connection &) noexcept = delete;
+  ~Connection();
 
-    void close();
+  void close();
 
 private:
-    explicit Connection(ConnectionPrivate *dd);
-    std::unique_ptr<ConnectionPrivate> d;
+  //explicit Connection(ConnectionPrivate *dd);
+  //std::unique_ptr<ConnectionPrivate> d;
 
+  /*
     Cursor start_query(Term *term, OptArgs&& args);
     void stop_query(uint64_t);
     void continue_query(uint64_t);
-
-    friend class Cursor;
-    friend class CursorPrivate;
-    friend class Token;
-    friend class Term;
-    friend std::unique_ptr<Connection>
-        connect(std::string host, int port, std::string auth_key);
-
+    */
+  //My implementation of start,stop and continue query
+  std::string start_query(Term *term, uint64_t token, OptArgs &&args);
+  std::string stop_query(uint64_t token);
+  std::string continue_query(uint64_t token);
+  std::string serialize_query(const Query &query);
+  //friend class Cursor;
+  //friend class CursorPrivate;
+  friend class Token;
+  friend class Term;
+  friend std::unique_ptr<Connection>;
+  //connect(std::string host, int port, std::string auth_key);
 };
 
 // $doc(connect)
-std::unique_ptr<Connection> connect(std::string host = "localhost", int port = 28015, std::string auth_key = "");
+//std::unique_ptr<Connection> connect(std::string host = "localhost", int port = 28015, std::string auth_key = "");
 
-}
+} // namespace RethinkDB
