@@ -10,7 +10,7 @@
 #include <cinttypes>
 
 #include "connection.h"
-#include "connection_p.h"
+#include "query.h"
 #include "json_p.h"
 #include "exceptions.h"
 #include "term.h"
@@ -27,11 +27,6 @@ using QueryType = Protocol::Query::QueryType;
 
 // constants
 const int debug_net = 0;
-// const uint32_t version_magic =
-//     static_cast<uint32_t>(Protocol::VersionDummy::Version::V0_4);
-// const uint32_t json_magic =
-//     static_cast<uint32_t>(Protocol::VersionDummy::Protocol::JSON);
-
 Connection::Connection() {}
 Connection::~Connection() {}
 

@@ -41,25 +41,14 @@ private:
   //explicit Connection(ConnectionPrivate *dd);
   //std::unique_ptr<ConnectionPrivate> d;
 
-  /*
-    Cursor start_query(Term *term, OptArgs&& args);
-    void stop_query(uint64_t);
-    void continue_query(uint64_t);
-    */
   //My implementation of start,stop and continue query
   std::string start_query(Term *term, uint64_t token, OptArgs &&args);
   std::string stop_query(uint64_t token);
   std::string continue_query(uint64_t token);
   std::string serialize_query(const Query &query);
-  //friend class Cursor;
-  //friend class CursorPrivate;
   friend class Token;
   friend class Term;
   friend std::unique_ptr<Connection>;
-  //connect(std::string host, int port, std::string auth_key);
 };
-
-// $doc(connect)
-//std::unique_ptr<Connection> connect(std::string host = "localhost", int port = 28015, std::string auth_key = "");
 
 } // namespace RethinkDB

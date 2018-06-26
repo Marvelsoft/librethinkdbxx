@@ -1,5 +1,5 @@
-#ifndef CONNECTION_P_H
-#define CONNECTION_P_H
+#ifndef QUERY_H_
+#define QUERY_H_
 
 #include <inttypes.h>
 
@@ -60,89 +60,6 @@ class Response
     Array result;
 };
 
-//class Token;
-/*class ConnectionPrivate
-{
-  public:
-    ConnectionPrivate(int sockfd)
-        : guarded_next_token(1), guarded_sockfd(sockfd), guarded_loop_active(false)
-    {
-    }
-
-    //void run_query(Query query, bool no_reply = false);
-    //My implementation
-    //std::string run_query(Query query, bool no_reply = false);
-
-    Response wait_for_response(uint64_t, double);
-
-    uint64_t new_token()
-    {
-        return guarded_next_token++;
-    }
-
-    std::mutex read_lock;
-    std::mutex write_lock;
-    std::mutex cache_lock;
-
-    struct TokenCache
-    {
-        bool closed = false;
-        std::condition_variable cond;
-        std::queue<Response> responses;
-    };
-
-    std::map<uint64_t, TokenCache> guarded_cache;
-    uint64_t guarded_next_token;
-    int guarded_sockfd;
-    bool guarded_loop_active;
-};
-
-class CacheLock
-{
-  public:
-    CacheLock(ConnectionPrivate *conn) : inner_lock(conn->cache_lock) {}
-
-    void lock()
-    {
-        inner_lock.lock();
-    }
-
-    void unlock()
-    {
-        inner_lock.unlock();
-    }
-
-    std::unique_lock<std::mutex> inner_lock;
-};
-
-class ReadLock
-{
-  public:
-    ReadLock(ConnectionPrivate *conn_) : lock(conn_->read_lock), conn(conn_) {}
-
-    size_t recv_some(char *, size_t, double wait);
-    void recv(char *, size_t, double wait);
-    std::string recv(size_t);
-    size_t recv_cstring(char *, size_t);
-
-    Response read_loop(uint64_t, CacheLock &&, double);
-
-    std::lock_guard<std::mutex> lock;
-    ConnectionPrivate *conn;
-};
-
-class WriteLock
-{
-  public:
-    WriteLock(ConnectionPrivate *conn_) : lock(conn_->write_lock), conn(conn_) {}
-
-    void send(const char *, size_t);
-    void send(std::string);
-
-    std::lock_guard<std::mutex> lock;
-    ConnectionPrivate *conn;
-};*/
-
 } // namespace RethinkDB
 
-#endif // CONNECTION_P_H
+#endif // QUERY_H_

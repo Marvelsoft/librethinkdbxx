@@ -12,8 +12,6 @@
 namespace RethinkDB
 {
 
-//class Cursor;
-
 // The type of data stored in a RethinkDB database.
 // The following JSON types are represented in a Datum as
 //  * null -> Nil
@@ -72,10 +70,6 @@ class Datum
 
     Datum(Protocol::Term::TermType type) : Datum(static_cast<double>(type)) {}
     Datum(const char *string) : Datum(static_cast<std::string>(string)) {}
-
-    // Cursors are implicitly converted into datums
-    // Datum(Cursor &&);
-    // Datum(const Cursor &);
 
     template <class T>
     Datum(const std::map<std::string, T> &map) : type(Type::OBJECT), value(Object())

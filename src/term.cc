@@ -60,16 +60,6 @@ Term nil()
 {
     return Term(Nil());
 }
-/*
-Cursor Term::run(Connection& conn, OptArgs&& opts) {
-    if (!free_vars.empty()) {
-        throw Error("run: term has free variables");
-    }
-
-    return conn.start_query(this, std::move(opts));
-}
-*/
-
 std::string Term::run(uint64_t token, OptArgs &&opts)
 {
     Connection conn;

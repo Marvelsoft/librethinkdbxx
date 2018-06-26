@@ -4,7 +4,6 @@
 #include "datum.h"
 #include "json_p.h"
 #include "utils.h"
-//#include "cursor.h"
 
 #include "rapidjson-config.h"
 #include "rapidjson/prettywriter.h"
