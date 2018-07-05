@@ -37,7 +37,6 @@ public:
 
   void close();
 
-private:
   //explicit Connection(ConnectionPrivate *dd);
   //std::unique_ptr<ConnectionPrivate> d;
 
@@ -46,6 +45,7 @@ private:
   std::string stop_query(uint64_t token);
   std::string continue_query(uint64_t token);
   std::string serialize_query(const Query &query);
+private:
   friend class Token;
   friend class Term;
   friend std::unique_ptr<Connection>;
