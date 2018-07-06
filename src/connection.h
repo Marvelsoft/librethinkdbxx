@@ -25,7 +25,7 @@ struct Query;
 //  * Read and write locks
 //  * A cache of responses that have not been read by the corresponding Cursor
 //class ConnectionPrivate;
-class Connection
+  class Connection
 {
 public:
   Connection();
@@ -39,12 +39,12 @@ public:
 
   //explicit Connection(ConnectionPrivate *dd);
   //std::unique_ptr<ConnectionPrivate> d;
+static std::string start_query(Term *term, uint64_t token, OptArgs &&args);
+static std::string stop_query(uint64_t token);
+static std::string continue_query(uint64_t token);
+static std::string serialize_query(const Query &query);
 
   //My implementation of start,stop and continue query
-  std::string start_query(Term *term, uint64_t token, OptArgs &&args);
-  std::string stop_query(uint64_t token);
-  std::string continue_query(uint64_t token);
-  std::string serialize_query(const Query &query);
 private:
   friend class Token;
   friend class Term;

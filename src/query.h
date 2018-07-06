@@ -13,7 +13,7 @@ namespace RethinkDB
 
 extern const int debug_net;
 struct Query
-{
+{   
     Protocol::Query::QueryType type;
     uint64_t token;
     Datum term;
