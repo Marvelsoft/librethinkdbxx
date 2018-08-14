@@ -18,6 +18,8 @@ generic_header = custom_target('protocol_defs',
                                           ]
                                 )
 
+rethinkdb_dep = declare_dependencies(generic_header, include_directories: include_dir, sources: project_srcs, dependencies: thread_dep)
+
 library('rethinkdb++', generic_header, include_directories: [include_dir], sources: project_srcs, 
         dependencies: thread_dep)
 static_library('rethinkdb++', generic_header, include_directories: [include_dir], sources: project_srcs, 
