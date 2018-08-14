@@ -15,7 +15,8 @@ generic_header = custom_target('protocol_defs',
                                 command: [python3, 
                                                 src_dir + '/reql/gen.py', 
                                                 src_dir + '/reql/ql2.proto',
-                                                '@OUTPUT0@' 
+                                                'subprojects/rethinkdb/src/protocol_defs.h'
+                                                #'@OUTPUT0@' 
                                           ]
                                 )
 
