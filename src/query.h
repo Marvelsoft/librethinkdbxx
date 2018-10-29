@@ -30,7 +30,7 @@ struct Query
         std::string query_str = write_datum(query_arr);
         if (debug_net > 0)
         {
-            fprintf(stderr, "[%" PRIu64 "] >> %s\n", token, query_str.c_str());
+            fprintf(stderr, "[%lu"  "] >> %s\n", token, query_str.c_str());
         }
 
         char header[12];
