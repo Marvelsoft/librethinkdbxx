@@ -2,4 +2,3 @@ build/
 *~
 __pycache__
 .vscode
-src/protocol_defs.h
