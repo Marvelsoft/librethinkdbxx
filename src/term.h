@@ -433,6 +433,10 @@ class Var
     }
 
     Var(int *id_) : id(id_) {}
+    Term operator[](const std::string &key)
+    {
+        return *(*this);
+    }
 
   private:
     int *id;
